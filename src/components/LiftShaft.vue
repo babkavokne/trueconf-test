@@ -1,27 +1,18 @@
 <template>
   <div class="well">
-    <div class="lift" :id="this.liftInfo.id">
-      <div class="arrow">asd</div>
+    <div :class="this.liftInfo.status === 'pending' ? 'lift pending' : 'lift'" :id="this.liftInfo.id">
+      <div class="arrow" v-if="this.liftInfo.goesTo">
+        {{ this.liftInfo.direction === 'up' ? '↑' : '↓' }}
+        {{ this.liftInfo.goesTo }}</div>
     </div>
   </div>
 </template>
 
 <script>
 export default {
-  data() {
-    return {
-    }
-  },
   props: {
     info: Object,
     liftInfo: Object
-  },
-  methods: {
-  },
-  watch: {
-    'liftInfo.status'(newValue) {
-      this.$emit('statusChanged', newValue)
-    }
   },
   mounted() {
     const well = document.querySelectorAll('.well');
@@ -43,10 +34,26 @@ export default {
     width: 100px
     background-color: #fff
     bottom: 0
-    // transition: all 1s
+    &.pending
+      animation: flicker 1s infinite
     .arrow
       position: absolute
-      top: -25px
+      padding: 4px
+      background-color: green
+      min-width: 30px
+      display: flex
+      justify-content: center
+      color: #fff
+      top: 10px
       left: 50%
       transform: translateX(-50%)
+
+@keyframes flicker 
+  0%, 100% 
+    opacity: 1
+    background-color: #fff
+  50%         
+    opacity: .5
+    background-color: red
+ 
 </style>

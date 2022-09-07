@@ -17,7 +17,7 @@ export default {
   data() {
     return {
       info: {
-        floors: 5,
+        floors: 15,
         liftsAmount: 1,
         floorHeight: 150,
       },
@@ -28,74 +28,97 @@ export default {
   methods: {
     call(e) {
       const isCalledFromFloor = this.callStack.find(el => el.callFromFloor === e.target.id);
-      if (!isCalledFromFloor) {
+      const liftOnFloor = this.lifts.find(el => el.onFloor === +e.target.id && el.status === 'free');
+      const goesTo = this.lifts.find(el => +el.goesTo === +e.target.id);
+
+      if (!isCalledFromFloor && !liftOnFloor && !goesTo) {
         this.callStack.push({ callFromFloor: e.target.id });
-        this.callHandler();
+        e.target.style.color = 'red';
+        if (this.callStack.length === 1) this.callHandler();
       }
+      console.log(this.callStack.length);
     },
     callHandler() {
-      // console.log(this.callStack.shift(), this.callStack);
-      // while (!this.callStack.length) { // Временно всегда положителен
-        const liftsCabins = Array.from(document.querySelectorAll(".lift"))
-        const liftsCabin = liftsCabins.find((el, i) => this.lifts[i].status === 'free');
-        const lift = this.lifts[liftsCabin.id];
+      const btns = Array.from(document.querySelectorAll("button"))
+      const liftsCabins = Array.from(document.querySelectorAll(".lift"))
+      const liftsCabin = liftsCabins.find((el, i) => this.lifts[i].status === 'free');
+      const lift = this.lifts[liftsCabin.id];
 
-        lift.status = 'busy';
-        lift.calledFromFloor = this.callStack.shift().callFromFloor; 
+      lift.status = 'busy';
+      lift.calledFromFloor = this.callStack[0].callFromFloor;
+      lift.goesTo = lift.calledFromFloor;
+      console.log('lift.goesTo', lift.goesTo);
+      const btn = btns[lift.calledFromFloor - 1];
+      console.log(btn);
 
-        // { id: i, onFloor: 1, status: 'free', calledFromFloor: null }
-        const floorHeight = this.info.floorHeight;
+      const floorHeight = this.info.floorHeight;
+
+      if (+lift.calledFromFloor >= +lift.onFloor) {
+        lift.direction = 'up';
         const id = setInterval(() => {
-
-          if (lift.calledFromFloor >= lift.onFloor) {
-            liftsCabin.style.bottom = +liftsCabin.style.bottom.slice(0, -2) + floorHeight / 100 + "px";
-
-            if (+liftsCabin.style.bottom.slice(0, -2) > floorHeight * (lift.calledFromFloor - 1)) {
-              lift.onFloor = lift.calledFromFloor;
-              liftsCabin.style.bottom = floorHeight * (lift.calledFromFloor - 1) + 'px';
-              lift.status = 'pending';
-              console.log(lift.status, lift.onFloor);
-              setTimeout(() => {
-                lift.status = 'free';
-                console.log('free');
-              }, 3000);
-              clearInterval(id);
-            }
+          liftsCabin.style.bottom = +liftsCabin.style.bottom.slice(0, -2) + floorHeight / 100 + "px";
+          if (
+            +liftsCabin.style.bottom.slice(0, -2) >= floorHeight * (lift.calledFromFloor - 1)
+          ) {
+            lift.onFloor = lift.calledFromFloor;
+            liftsCabin.style.bottom = floorHeight * (lift.calledFromFloor - 1) + 'px';
+            lift.status = 'pending';
+            console.log(lift.status, lift.onFloor);
+            clearInterval(id);
+            setTimeout(() => {
+              lift.status = 'free';
+              console.log('free');
+              this.callStack.shift();
+              btn.style.color = 'black';
+              console.log(this.callStack);
+              lift.goesTo = null;
+              if (this.callStack.length) this.callHandler()
+              console.log(this.lifts[liftsCabin.id]);
+            }, 3000);
           }
-
-          if (lift.calledFromFloor < lift.onFloor) {
-            liftsCabin.style.bottom = +liftsCabin.style.bottom.slice(0, -2) - floorHeight / 100 + "px";
-
-            if (+liftsCabin.style.bottom.slice(0, -2) < floorHeight * (lift.calledFromFloor - 1)) {
-              lift.onFloor = lift.calledFromFloor;
-              liftsCabin.style.bottom = floorHeight * (lift.calledFromFloor - 1) + 'px';
-              lift.status = 'pending';
-              console.log(lift.status, lift.onFloor);
-              setTimeout(() => {
-                lift.status = 'free';
-                console.log('free');
-              }, 3000);
-              clearInterval(id);
-            }
+        }, 1)
+      } else {
+        lift.direction = 'down';
+        const id = setInterval(() => {
+          liftsCabin.style.bottom = +liftsCabin.style.bottom.slice(0, -2) - floorHeight / 100 + "px";
+          if (
+            +liftsCabin.style.bottom.slice(0, -2) < floorHeight * (lift.calledFromFloor - 1)
+          ) {
+            lift.onFloor = lift.calledFromFloor;
+            liftsCabin.style.bottom = floorHeight * (lift.calledFromFloor - 1) + 'px';
+            lift.status = 'pending';
+            console.log(lift.status, lift.onFloor);
+            clearInterval(id);
+            setTimeout(() => {
+              lift.status = 'free';
+              console.log('free');
+              this.callStack.shift();
+              btn.style.color = 'black';
+              console.log(this.callStack);
+              lift.goesTo = null;
+              if (this.callStack.length) this.callHandler()
+              console.log(this.lifts[liftsCabin.id]);
+            }, 3000);
           }
-
-        }, 10);
+        }, 1)
       }
-    // }
+    }
   },
   beforeMount() {
     const liftsAmount = this.info.liftsAmount;
     for (let i = 0; i < liftsAmount; i++) {
-      this.lifts.push({ id: i, onFloor: 1, status: 'free', calledFromFloor: null })
+      this.lifts.push(
+        { id: i, onFloor: 1, status: 'free', calledFromFloor: null, goesTo: null, direction: null }
+      )
     }
   },
   mounted() {
     const wells = document.querySelectorAll('.well');
     const buttons = document.querySelectorAll('.btn');
-    const height = this.info.floorHeight;
+    const floorHeight = this.info.floorHeight;
     const liftsAmount = this.info.liftsAmount;
     wells.forEach((el, i) => el.style.left = 20 * (i + 1) + 100 * i + 'px');
-    buttons.forEach(el => el.style.padding = `${height / 2 - 9.7}px 0 ${height / 2 - 9.7}px ${liftsAmount * 104 + liftsAmount * 24}px`);
+    buttons.forEach(el => el.style.padding = `${floorHeight / 2 - 9.7}px 0 ${floorHeight / 2 - 9.7}px ${liftsAmount * 115 + liftsAmount * 24}px`);
   },
   components: { LiftShaft }
 }
@@ -103,6 +126,7 @@ export default {
 
 <style lang="sass" scoped>
 main
+  overflow-x: hidden 
   min-height: 100vh
   height: 100%
   display: flex
@@ -110,12 +134,10 @@ main
   .buttons
     display: flex
     flex-direction: column-reverse
-    div
+    .btn
       width: 100vw
       border-top: 1px solid #fff
       button
         border: none
         cursor: pointer
-    
-
 </style>
