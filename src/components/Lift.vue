@@ -1,6 +1,6 @@
 <template>
   <main>
-    <LiftShaft :info="info" :liftInfo="lifts[lift.id]" @statusChanged="status" v-for="lift in lifts" />
+    <LiftShaft :info="info" :liftInfo="lifts[lift.id]" v-for="lift in lifts" />
     <div class="buttons">
       <div class="btn" v-for="btn in info.floors">
         <button @click="call" :id="btn">
@@ -28,11 +28,12 @@ export default {
   methods: {
     call(e) {
       const isCalledFromFloor = this.callStack.find(el => el.callFromFloor === e.target.id);
-      const liftOnFloor = this.lifts.find(el => el.onFloor === +e.target.id && el.status === 'free');
+      const liftOnFloor = this.lifts.find(el => el.onFloor == e.target.id && el.status === 'free');
       const goesTo = this.lifts.find(el => +el.goesTo === +e.target.id);
 
       if (!isCalledFromFloor && !liftOnFloor && !goesTo) {
         this.callStack.push({ callFromFloor: e.target.id });
+        localStorage.setItem('callStack', JSON.stringify(this.callStack))
         e.target.style.color = 'red';
         if (this.callStack.length === 1) this.callHandler();
       }
@@ -43,61 +44,78 @@ export default {
       const liftsCabins = Array.from(document.querySelectorAll(".lift"))
       const liftsCabin = liftsCabins.find((el, i) => this.lifts[i].status === 'free');
       const lift = this.lifts[liftsCabin.id];
+      const floorHeight = this.info.floorHeight;
 
       lift.status = 'busy';
       lift.calledFromFloor = this.callStack[0].callFromFloor;
       lift.goesTo = lift.calledFromFloor;
-      console.log('lift.goesTo', lift.goesTo);
-      const btn = btns[lift.calledFromFloor - 1];
-      console.log(btn);
 
-      const floorHeight = this.info.floorHeight;
+      const btn = btns[lift.calledFromFloor - 1];
 
       if (+lift.calledFromFloor >= +lift.onFloor) {
-        lift.direction = 'up';
+
+        lift.direction = '↑';
+
         const id = setInterval(() => {
+
           liftsCabin.style.bottom = +liftsCabin.style.bottom.slice(0, -2) + floorHeight / 100 + "px";
+          localStorage.setItem('position', +liftsCabin.style.bottom.slice(0, -2))
+
           if (
             +liftsCabin.style.bottom.slice(0, -2) >= floorHeight * (lift.calledFromFloor - 1)
           ) {
-            lift.onFloor = lift.calledFromFloor;
+            lift.onFloor = +lift.calledFromFloor;
             liftsCabin.style.bottom = floorHeight * (lift.calledFromFloor - 1) + 'px';
+            localStorage.setItem('position', +liftsCabin.style.bottom.slice(0, -2));
             lift.status = 'pending';
-            console.log(lift.status, lift.onFloor);
+
             clearInterval(id);
+
             setTimeout(() => {
               lift.status = 'free';
-              console.log('free');
-              this.callStack.shift();
               btn.style.color = 'black';
-              console.log(this.callStack);
               lift.goesTo = null;
-              if (this.callStack.length) this.callHandler()
-              console.log(this.lifts[liftsCabin.id]);
+              lift.direction = null;
+
+              this.callStack.shift();
+              localStorage.setItem('callStack', JSON.stringify(this.callStack));
+              localStorage.setItem('lifts', JSON.stringify(this.lifts));
+
+              if (this.callStack.length) this.callHandler();
             }, 3000);
+
           }
         }, 1)
       } else {
-        lift.direction = 'down';
+
+        lift.direction = '↓';
+
         const id = setInterval(() => {
+
           liftsCabin.style.bottom = +liftsCabin.style.bottom.slice(0, -2) - floorHeight / 100 + "px";
+          localStorage.setItem('position', +liftsCabin.style.bottom.slice(0, -2));
+
           if (
             +liftsCabin.style.bottom.slice(0, -2) < floorHeight * (lift.calledFromFloor - 1)
           ) {
-            lift.onFloor = lift.calledFromFloor;
+            lift.onFloor = +lift.calledFromFloor;
             liftsCabin.style.bottom = floorHeight * (lift.calledFromFloor - 1) + 'px';
+            localStorage.setItem('position', +liftsCabin.style.bottom.slice(0, -2));
             lift.status = 'pending';
-            console.log(lift.status, lift.onFloor);
+
             clearInterval(id);
+
             setTimeout(() => {
               lift.status = 'free';
-              console.log('free');
-              this.callStack.shift();
               btn.style.color = 'black';
-              console.log(this.callStack);
               lift.goesTo = null;
-              if (this.callStack.length) this.callHandler()
-              console.log(this.lifts[liftsCabin.id]);
+              lift.direction = null;
+
+              this.callStack.shift();
+              localStorage.setItem('callStack', JSON.stringify(this.callStack));
+              localStorage.setItem('lifts', JSON.stringify(this.lifts));
+
+              if (this.callStack.length) this.callHandler();
             }, 3000);
           }
         }, 1)
@@ -106,10 +124,15 @@ export default {
   },
   beforeMount() {
     const liftsAmount = this.info.liftsAmount;
-    for (let i = 0; i < liftsAmount; i++) {
-      this.lifts.push(
-        { id: i, onFloor: 1, status: 'free', calledFromFloor: null, goesTo: null, direction: null }
-      )
+
+    if (localStorage.getItem('lifts')) {
+      this.lifts = JSON.parse(localStorage.getItem('lifts'));
+    } else {
+      for (let i = 0; i < liftsAmount; i++) {
+        this.lifts.push(
+          { id: i, onFloor: 1, status: 'free', calledFromFloor: null, goesTo: null, direction: null }
+        )
+      }
     }
   },
   mounted() {
@@ -117,8 +140,30 @@ export default {
     const buttons = document.querySelectorAll('.btn');
     const floorHeight = this.info.floorHeight;
     const liftsAmount = this.info.liftsAmount;
+
     wells.forEach((el, i) => el.style.left = 20 * (i + 1) + 100 * i + 'px');
     buttons.forEach(el => el.style.padding = `${floorHeight / 2 - 9.7}px 0 ${floorHeight / 2 - 9.7}px ${liftsAmount * 115 + liftsAmount * 24}px`);
+
+    if (JSON.parse(localStorage.getItem('callStack')) && localStorage.getItem('position')) {
+
+      this.callStack = [...JSON.parse(localStorage.getItem('callStack'))];
+
+      const liftsCabins = Array.from(document.querySelectorAll(".lift"));
+      const liftsCabin = liftsCabins.find((el, i) => this.lifts[i].status === 'free');
+
+      liftsCabin.style.bottom = localStorage.getItem('position') + 'px';
+
+      if (this.callStack.length) {
+        const btns = Array.from(document.querySelectorAll("button"));
+        const btnsIndexes = this.callStack.map(el => el.callFromFloor)
+        const filteredBtns = btns.filter((el, i) => btnsIndexes.includes(`${i + 1}`));
+        console.log(filteredBtns);
+
+        filteredBtns.forEach(el => el.style.color = 'red');
+
+        this.callHandler();
+      }
+    }
   },
   components: { LiftShaft }
 }

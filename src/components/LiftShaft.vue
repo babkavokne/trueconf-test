@@ -2,7 +2,7 @@
   <div class="well">
     <div :class="this.liftInfo.status === 'pending' ? 'lift pending' : 'lift'" :id="this.liftInfo.id">
       <div class="arrow" v-if="this.liftInfo.goesTo">
-        {{ this.liftInfo.direction === 'up' ? '↑' : '↓' }}
+        {{ this.liftInfo.direction ? this.liftInfo.direction : '' }}
         {{ this.liftInfo.goesTo }}</div>
     </div>
   </div>
